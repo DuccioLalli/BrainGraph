@@ -7,7 +7,7 @@ its connected neighbors, reducing sharp angles and noise while preserving the ov
 
 
 USAGE:
-    python create_centerline_vtp_single.py --input /path/to/mask.nii.gz --output /path/to/save/skeleton.vtp \
+    python laplace_extractor.py --input /path/to/mask.nii.gz --output /path/to/save/skeleton.vtp \
         --lap_iters 2 --lap_alpha 0.5
 
     ONLY INPUT IS REQUIRED TO RUN THIS.
