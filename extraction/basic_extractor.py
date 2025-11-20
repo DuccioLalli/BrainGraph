@@ -13,8 +13,27 @@ import numpy as np
 import nibabel as nib
 import networkx as nx
 import pyvista as pv
-from skimage.morphology import skeletonize
+from skimage.morphology import skeletonize_3d
 # Note: Removed scipy and cleaning imports
+
+
+def view_mask_3d(mask, affine, title="Mask 3D"):
+    """
+    mask: array 3D numpy (bool: true/false or 0/1)
+    affine: 4x4 numpy array
+    """
+    
+    vol = mask.astype(np.float32)
+    print(np.unique(vol, return_counts=True))
+    grid = pv.wrap(vol)
+    mesh = grid.contour(isosurfaces=[0.5])
+    mesh = mesh.transform(affine)
+
+    pl = pv.Plotter()
+    pl.add_mesh(mesh, color="red", opacity=0.7)
+    pl.add_axes()
+    pl.show(title=title)
+
 
 def load_mask(input_path):
     """
@@ -45,13 +64,16 @@ def load_mask(input_path):
         raise ValueError(f"Unsupported file format: {ext}. Use .nii, .nii.gz, or .npy.")
 
     mask_array = arr > 0
+    if debug := True:
+        view_mask_3d(mask_array, affine, title="Loaded Mask")
     print(f"Mask loaded. Shape: {mask_array.shape}, Voxels: {np.sum(mask_array)}")
     return mask_array, affine
 
+
 def build_graph(skeleton):
     """
-    Builds a networkx graph from a 3D skeleton voxel array.
-    Each voxel in the skeleton becomes a node, and adjacent
+    Builds a networkx graph from a 3D skeleton voxel array: the Skeleton is ndarray (448,448,128) of [0, 255]
+    Each voxel (i.e. entry == 255 in the skeleton's ndarray) becomes a node, and adjacent
     skeleton voxels are connected by edges.
     """
     print("Building graph from skeleton voxels...")
@@ -60,14 +82,14 @@ def build_graph(skeleton):
 
     # Get all (x, y, z) coordinates of skeleton voxels
     fibers = np.argwhere(skeleton)
-
     if fibers.size == 0:
         print("Warning: Skeleton is empty. Graph will be empty.")
         return G
 
-    # Create a set of voxel coordinates for fast lookup
+    # Create a set of voxel coordinates for fast lookup, "club of skeleton voxels"
     voxel_set = set(map(tuple, fibers))
 
+    # v is the current voxel coordinate (x,y,z) (voxel on the centerline)
     for v in fibers:
         coord = tuple(v)
         G.add_node(coord)
@@ -77,10 +99,10 @@ def build_graph(skeleton):
         for i in range(max(0, x-1), min(shape[0], x+2)):
             for j in range(max(0, y-1), min(shape[1], y+2)):
                 for k in range(max(0, z-1), min(shape[2], z+2)):
-                    neighbor = (i, j, k)
-                    if neighbor != coord and neighbor in voxel_set:
-                        # Add an edge with weight = Euclidean distance
-                        weight = np.linalg.norm(np.array(coord) - np.array(neighbor))
+                    # with those loops, we visit all neighbors including diagonals in a 3x3x3 cube
+                    neighbor = (i, j, k)                                                # current neighbor
+                    if neighbor != coord and neighbor in voxel_set:                     # if neighbor is a skeleton voxel (different from current)
+                        weight = np.linalg.norm(np.array(coord) - np.array(neighbor))   # Add an edge with weight = Euclidean distance
                         G.add_edge(coord, neighbor, weight=weight)
 
     print(f"Graph built. Nodes: {G.number_of_nodes()}, Edges: {G.number_of_edges()}")
@@ -233,7 +255,9 @@ def main():
     # 2. Compute skeleton
     print("Computing 3D skeleton...")
     # We now use the raw 'mask' directly
-    skel = skeletonize(mask)
+    skel = skeletonize_3d(mask)
+    if debug := True:
+        view_mask_3d(skel, affine, title="Computed Skeleton")
     print("Skeleton computation complete.")
 
     # 3. Build graph
