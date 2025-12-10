@@ -47,11 +47,13 @@ output_segmentation_vtp = "C:/Users/ducci/Documents/Università_2025/6_SemesterP
 # 1. Load mask (fast + clean)
 print("1. Loading the mask")
 img = nib.load(input_path)
+spacing = img.header.get_zooms()  # (sx, sy, sz)
 arr = img.get_fdata(dtype=np.float32) 
 affine = img.affine
 
 mask = arr > 0
 print(f"-- Mask loaded. Shape: {mask.shape}, Voxels: {mask.sum()}")
+print("-- Voxel size (mm):", spacing)
 
 
 
