@@ -194,11 +194,11 @@ def evaluate_centerline(pred_path, gt_path):
 
 
 if __name__ == "__main__":
-    pred_vtp = r"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_prova/ExCenterline_003.vtp"
+    n=2
+    pred_vtp = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_prova/ExCenterline_00{n}.vtp"
+    # pred_vtp = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_basic_extractor/BasicCenterline_00{n}.vtp"
+    gt_vtp   = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/data/ITKTubeTK_GoldStandardVtp/VascularNetwork-00{n}.vtp"
     
-    gt_vtp   = r"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/data/ITKTubeTK_GoldStandardVtp/VascularNetwork-003.vtp"
-    # gt_vtp = r"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_prova/ExCenterline_002.vtp"
-    
-    show_plot = True
+    show_plot = False
 
     evaluate_centerline(pred_vtp, gt_vtp)
