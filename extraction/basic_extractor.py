@@ -228,36 +228,25 @@ def save_graph_to_vtp(graph, output_vtp_path, affine=None):
     except Exception as e:
         print(f"Error saving .vtp file: {e}")
 
+   
 def main():
-    parser = argparse.ArgumentParser(
-        description="Create a .vtp centerline file from a 3D vessel mask."
-    )
-    parser.add_argument(
-        "input",
-        type=str,
-        help="Path to the input vessel mask (.nii, .nii.gz, or .npy)"
-    )
-    parser.add_argument(
-        "--output",
-        "-o",
-        type=str,
-        default="skeleton.vtp",
-        help="Path to save the output .vtp file (default: skeleton.vtp)"
-    )
-    # --- All cleaning arguments have been removed ---
-    args = parser.parse_args()
+    n=8
+    # Imposta qui i percorsi manualmente
+    input_path = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/data/ITKTubeTK_ManualSegmentationNii/labels-00{n}.nii.gz"
+    debug = True
+    output_path = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_basic_extractor/BasicCenterline_00{n}.vtp"
 
     # 1. Load mask
-    mask, affine = load_mask(args.input)
-
-    # --- All cleaning steps have been removed ---
+    mask, affine = load_mask(input_path)
 
     # 2. Compute skeleton
     print("Computing 3D skeleton...")
-    # We now use the raw 'mask' directly
     skel = skeletonize_3d(mask)
-    if debug := True:
+
+    # Debug: visualizza lo scheletro (metti False se non vuoi finestre grafiche)
+    if debug:
         view_mask_3d(skel, affine, title="Computed Skeleton")
+
     print("Skeleton computation complete.")
 
     # 3. Build graph
@@ -267,8 +256,51 @@ def main():
     pruned_graph = prune_graph(graph)
 
     # 5. Save to VTP
-    # Pass the affine to save in world coordinates
-    save_graph_to_vtp(pruned_graph, args.output, affine=affine)
+    save_graph_to_vtp(pruned_graph, output_path, affine=affine)
+    
+    
+    
+# def main():
+#     parser = argparse.ArgumentParser(
+#         description="Create a .vtp centerline file from a 3D vessel mask."
+#     )
+#     parser.add_argument(
+#         "input",
+#         type=str,
+#         help="Path to the input vessel mask (.nii, .nii.gz, or .npy)"
+#     )
+#     parser.add_argument(
+#         "--output",
+#         "-o",
+#         type=str,
+#         default="skeleton.vtp",
+#         help="Path to save the output .vtp file (default: skeleton.vtp)"
+#     )
+#     # --- All cleaning arguments have been removed ---
+#     args = parser.parse_args()
+
+#     # 1. Load mask
+#     mask, affine = load_mask(args.input)
+
+#     # --- All cleaning steps have been removed ---
+
+#     # 2. Compute skeleton
+#     print("Computing 3D skeleton...")
+#     # We now use the raw 'mask' directly
+#     skel = skeletonize_3d(mask)
+#     if debug := True:
+#         view_mask_3d(skel, affine, title="Computed Skeleton")
+#     print("Skeleton computation complete.")
+
+#     # 3. Build graph
+#     graph = build_graph(skel)
+
+#     # 4. Prune graph
+#     pruned_graph = prune_graph(graph)
+
+#     # 5. Save to VTP
+#     # Pass the affine to save in world coordinates
+#     save_graph_to_vtp(pruned_graph, args.output, affine=affine)
 
 if __name__ == "__main__":
     main()
