@@ -32,16 +32,15 @@ def save_mask_vtp(mask, affine, out_path):
     surf.save(out_path)
     
     
-input_path = (
-    "C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/data/ITKTubeTK_ManualSegmentationNii/labels-002.nii.gz"
-)
+n = 8
+input_path = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/data/ITKTubeTK_ManualSegmentationNii/labels-00{n}.nii.gz"
+
 save_centerline = True
 save_segmentation = True
-debug = True
+debug = False
 
-output_centerline_vtp = "C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_prova/ExCenterline_002.vtp"
-output_segmentation_vtp = "C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_prova/ExSegmentation_002.vtp"
-
+output_centerline_vtp = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_prova/ExCenterline_00{n}.vtp"
+output_segmentation_vtp = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_prova/ExSegmentation_00{n}.vtp"
 
 
 # 1. Load mask (fast + clean)
