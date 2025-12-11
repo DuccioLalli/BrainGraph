@@ -7,7 +7,7 @@ import numpy as np
 import nibabel as nib
 import trimesh
 import skeletor as sk
-import time
+
 
 def save_mask_vtp(mask, affine, out_path):
     print("4. Saving segmentation surface to VTP...")
@@ -20,6 +20,7 @@ def save_mask_vtp(mask, affine, out_path):
 
     # Extract surface
     surf = grid.contour(isosurfaces=[0.5])
+    surf = surf.smooth_taubin(n_iter=50, pass_band=0.1)
 
     # Apply affine to put surface in world coordinates
     pts = surf.points
@@ -32,12 +33,12 @@ def save_mask_vtp(mask, affine, out_path):
     surf.save(out_path)
     
     
-n = 8
+n = 3
 input_path = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/data/ITKTubeTK_ManualSegmentationNii/labels-00{n}.nii.gz"
 
 save_centerline = True
 save_segmentation = True
-debug = False
+debug = True
 
 output_centerline_vtp = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_prova/ExCenterline_00{n}.vtp"
 output_segmentation_vtp = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_prova/ExSegmentation_00{n}.vtp"
@@ -65,17 +66,28 @@ grid = pv.wrap(mask)
 # OPTIMIZED: no triangulate() unless needed
 surf = grid.contour(isosurfaces=0.5)
 
-# Extract mesh data
+surf = surf.smooth_taubin(n_iter=30, pass_band=0.1)
+surf.plot(color="white")
+
+# Extract mesh data to convert in trimesh format
 vertices = surf.points
 faces = surf.faces.reshape(-1, 4)[:, 1:]
 
-# Create Trimesh
+# Convertion to Trimesh
 tm_mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False) 
 
-
-
 # 3. Skeletonize
-skel = sk.skeletonize.by_wavefront(tm_mesh, waves=1, step_size=2)
+skel = sk.skeletonize.by_wavefront(
+    tm_mesh,
+    waves=1,           # num waves
+    step_size=2,
+    radius_agg="mean", # radius
+    progress=True      # bar
+)
+
+# post processing
+sk.post.clean_up(skel, mesh=tm_mesh, inplace=True)
+
 print(f"-- Skeleton extracted: {len(skel.vertices)} nodes, {len(skel.edges)} edges")
 
 if debug:
