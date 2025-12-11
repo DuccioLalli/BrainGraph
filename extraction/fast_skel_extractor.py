@@ -33,7 +33,7 @@ def save_mask_vtp(mask, affine, out_path):
     surf.save(out_path)
     
     
-n = 3
+n = 2
 input_path = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/data/ITKTubeTK_ManualSegmentationNii/labels-00{n}.nii.gz"
 
 save_centerline = True
@@ -54,8 +54,6 @@ affine = img.affine
 mask = arr > 0
 print(f"-- Mask loaded. Shape: {mask.shape}, Voxels: {mask.sum()}")
 print("-- Voxel size (mm):", spacing)
-
-
 
 # 2. Extract mesh surface (fast)
 print("2. Extracting the skeleton")
