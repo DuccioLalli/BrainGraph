@@ -6,7 +6,7 @@ representing the 3D centerline skeleton.
 USAGE:
     python create_centerline_vtp.py /path/to/your/mask.nii.gz --output /path/to/save/skeleton.vtp
 """
-
+Interpolate = True
 import os
 import argparse
 import numpy as np
@@ -15,6 +15,40 @@ import networkx as nx
 import pyvista as pv
 from skimage.morphology import skeletonize_3d
 # Note: Removed scipy and cleaning imports
+
+if Interpolate:
+    from scipy.ndimage import zoom
+    def upsample_mask(mask, affine, scale=(2,2,2)):
+        """
+        Upsample a 3D binary mask using volumetric interpolation.
+        
+        Parameters:
+            mask   : 3D numpy array (bool)
+            affine : original 4x4 affine matrix
+            scale  : tuple of scaling factors for (x, y, z). 
+                    Example (2,2,2) doubles resolution.
+
+        Returns:
+            new_mask  : upsampled boolean mask
+            new_affine: adjusted affine matrix
+        """
+        print(f"Upsampling volume by factors {scale} ...")
+
+        # Convert boolean mask to float for interpolation
+        mask_float = mask.astype(np.float32)
+
+        # Volumetric upsampling (trilinear interpolation)
+        up = zoom(mask_float, zoom=scale, order=1)
+
+        # Threshold back to boolean mask
+        new_mask = up > 0.5
+
+        # Adjust voxel size in the affine
+        new_affine = affine.copy()
+        new_affine[:3, :3] /= scale  # shrink voxel size
+
+        print(f"Upsampled shape: {new_mask.shape}")
+        return new_mask, new_affine
 
 
 def view_mask_3d(mask, affine, title="Mask 3D"):
@@ -230,15 +264,20 @@ def save_graph_to_vtp(graph, output_vtp_path, affine=None):
 
    
 def main():
-    n=8
+    n=2
     # Imposta qui i percorsi manualmente
     input_path = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/data/ITKTubeTK_ManualSegmentationNii/labels-00{n}.nii.gz"
     debug = True
     output_path = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_basic_extractor/BasicCenterline_00{n}.vtp"
-
+    if Interpolate:
+        output_path = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_basic_extractor/BasicCenterline_00{n}_inter.vtp"
     # 1. Load mask
     mask, affine = load_mask(input_path)
 
+    if Interpolate:
+        # Increase resolution → more voxel separation between vessels
+        mask, affine = upsample_mask(mask, affine, scale=(3,3,3))
+    
     # 2. Compute skeleton
     print("Computing 3D skeleton...")
     skel = skeletonize_3d(mask)
