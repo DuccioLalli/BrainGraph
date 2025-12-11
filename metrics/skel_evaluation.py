@@ -33,15 +33,6 @@ def polyline_length(poly):
     return total_length
 
 
-# Node degrees (branching)
-# def compute_node_degree(poly):
-#     lines = poly.lines.reshape(-1, 3)[:, 1:]
-#     degree = np.zeros(poly.n_points, dtype=int)
-#     for a, b in lines:
-#         degree[a] += 1
-#         degree[b] += 1
-#     return degree
-
 def compute_node_degree(poly):
     pts = poly.points
     lines = poly.lines
@@ -197,6 +188,7 @@ if __name__ == "__main__":
     n=2
     pred_vtp = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_prova/ExCenterline_00{n}.vtp"
     # pred_vtp = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_basic_extractor/BasicCenterline_00{n}.vtp"
+    # pred_vtp = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_laplacian_extractor/LaplacianCenterline_00{n}.vtp"
     gt_vtp   = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/data/ITKTubeTK_GoldStandardVtp/VascularNetwork-00{n}.vtp"
     
     show_plot = False
