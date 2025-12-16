@@ -13,7 +13,7 @@ import numpy as np
 import nibabel as nib
 import networkx as nx
 import pyvista as pv
-from skimage.morphology import skeletonize_3d
+from skimage.morphology import skeletonize 
 # Note: Removed scipy and cleaning imports
 
 
@@ -61,7 +61,7 @@ def view_mask_3d(mask, affine, title="Mask 3D"):
     print(np.unique(vol, return_counts=True))
     grid = pv.wrap(vol)
     mesh = grid.contour(isosurfaces=[0.5])
-    mesh = mesh.transform(affine)
+    mesh = mesh.transform(affine, inplace = True)
 
     pl = pv.Plotter()
     pl.add_mesh(mesh, color="red", opacity=0.7)
@@ -284,7 +284,7 @@ def main():
     
     # 2. Compute skeleton
     print("Computing 3D skeleton...")
-    skel = skeletonize_3d(mask)
+    skel = skeletonize(mask)
 
     # Debug: visualizza lo scheletro (metti False se non vuoi finestre grafiche)
     if debug:
