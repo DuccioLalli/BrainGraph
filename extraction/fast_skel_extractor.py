@@ -9,7 +9,7 @@ import trimesh
 import skeletor as sk
 
 
-def save_mask_vtp(mask, affine, out_path):
+def save_mask_vtp(mask, affine, out_path, n_iter, pass_band):
     print("4. Saving segmentation surface to VTP...")
 
     # Convert mask to float for PyVista
@@ -20,7 +20,9 @@ def save_mask_vtp(mask, affine, out_path):
 
     # Extract surface
     surf = grid.contour(isosurfaces=[0.5])
-    surf = surf.smooth_taubin(n_iter=50, pass_band=0.1)
+    
+    # Smooth surface mash
+    surf = surf.smooth_taubin(n_iter=n_iter, pass_band=pass_band)
 
     # Apply affine to put surface in world coordinates
     pts = surf.points
@@ -32,7 +34,8 @@ def save_mask_vtp(mask, affine, out_path):
 
     surf.save(out_path)
     
-    
+
+# Specify the label of the Segmentation to consider
 n = 2
 input_path = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/data/ITKTubeTK_ManualSegmentationNii/labels-00{n}.nii.gz"
 
@@ -43,8 +46,12 @@ debug = True
 output_centerline_vtp = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_prova/ExCenterline_00{n}.vtp"
 output_segmentation_vtp = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_prova/ExSegmentation_00{n}.vtp"
 
+# Smoothing settings (for the mesh surface)
+n_iter = 30
+pass_band = 0.1
 
-# 1. Load mask (fast + clean)
+
+# 1. Load mask
 print("1. Loading the mask")
 img = nib.load(input_path)
 spacing = img.header.get_zooms()  # (sx, sy, sz)
@@ -61,10 +68,11 @@ print("2. Extracting the skeleton")
 # Direct wrap without copying
 grid = pv.wrap(mask)
 
-# OPTIMIZED: no triangulate() unless needed
+# no triangulate() (to speed up)
 surf = grid.contour(isosurfaces=0.5)
 
-surf = surf.smooth_taubin(n_iter=30, pass_band=0.1)
+# Pre processing: smooth the surface
+surf = surf.smooth_taubin(n_iter=n_iter, pass_band=pass_band)
 surf.plot(color="white")
 
 # Extract mesh data to convert in trimesh format
@@ -116,7 +124,7 @@ if save_centerline:
 
 
 if save_segmentation:
-    save_mask_vtp(mask, affine, output_segmentation_vtp)
+    save_mask_vtp(mask, affine, output_segmentation_vtp, n_iter, pass_band)
     print(f"-- Segmentation saved to: {output_segmentation_vtp}")
     
 
