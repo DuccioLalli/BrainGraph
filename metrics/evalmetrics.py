@@ -40,102 +40,6 @@ def world_to_voxel(points_xyz: np.ndarray, affine: np.ndarray) -> np.ndarray:
     ijk = (inv @ homog.T).T[:, :3]
     return ijk
 
-from scipy.ndimage import distance_transform_edt, map_coordinates
-
-# def centerline_vs_mask_metrics(sampled_lines, nii_path: str, r_mm: float = 1.0):
-#     img = nib.load(nii_path)
-#     mask = img.get_fdata() > 0
-#     affine = img.affine
-#     spacing = img.header.get_zooms()[:3]  # (sx,sy,sz) in mm
-
-#     # DT verso il vaso: 0 dentro, >0 fuori (mm)
-#     dt_to_vessel = distance_transform_edt(~mask, sampling=spacing)
-
-#     # DT interno (raggio approx): 0 fuori, >0 dentro (mm)
-#     dt_inside = distance_transform_edt(mask, sampling=spacing)
-
-#     total_len = 0.0
-#     inside_len = 0.0
-
-#     dt_samples = []
-#     inside_samples = []
-
-#     outside_run = 0.0
-#     max_outside_run = 0.0
-#     n_outside_runs = 0
-#     currently_outside = False
-
-#     for arr in sampled_lines.lines:
-#         if arr.shape[0] < 2:
-#             continue
-
-#         p0 = arr[:-1]
-#         p1 = arr[1:]
-#         seg_len = np.linalg.norm(p1 - p0, axis=1)
-#         mid = (p0 + p1) / 2.0
-
-#         ijk = world_to_voxel(mid, affine)  # float voxel coords
-
-#         # map_coordinates vuole coords separati per asse in ordine (z,y,x) se array è (z,y,x).
-#         # nibabel data è tipicamente (X,Y,Z) in numpy? In pratica img.get_fdata() restituisce array (X,Y,Z).
-#         # Quindi coords da passare sono [x_coords, y_coords, z_coords].
-#         x, y, z = ijk[:,0], ijk[:,1], ijk[:,2]
-
-#         # campiona dt (trilineare)
-#         d_out = map_coordinates(dt_to_vessel, [x, y, z], order=1, mode="nearest")
-#         d_in  = map_coordinates(dt_inside,    [x, y, z], order=1, mode="nearest")
-
-#         dt_samples.append(d_out)
-#         inside_samples.append(d_in)
-
-#         # “inside hard”: consideriamo inside se d_out == 0 (entro voxel); con trilineare è raro ==0,
-#         # quindi usiamo una soglia piccola: dentro se d_out < 0.25*min(spacing) (circa “dentro”).
-#         inside_flag = d_out < (0.25 * float(min(spacing)))
-
-#         total_len += float(np.sum(seg_len))
-#         inside_len += float(np.sum(seg_len[inside_flag]))
-
-#         # outside runs (su segmenti)
-#         for L, out in zip(seg_len, ~inside_flag):
-#             if out:
-#                 outside_run += float(L)
-#                 if not currently_outside:
-#                     currently_outside = True
-#                     n_outside_runs += 1
-#             else:
-#                 max_outside_run = max(max_outside_run, outside_run)
-#                 outside_run = 0.0
-#                 currently_outside = False
-
-#     max_outside_run = max(max_outside_run, outside_run)
-
-#     dt_all = np.concatenate(dt_samples) if dt_samples else np.array([])
-#     din_all = np.concatenate(inside_samples) if inside_samples else np.array([])
-
-#     metrics = {
-#         "total_length": total_len,
-#         "inside_length": inside_len,
-#         "inside_ratio": inside_len / total_len if total_len > 1e-12 else float("nan"),
-#         "outside_length": total_len - inside_len,
-#         "outside_runs": n_outside_runs,
-#         "max_outside_run": max_outside_run,
-#     }
-
-#     if dt_all.size:
-#         metrics.update({
-#             "dt_to_vessel_mean": float(np.mean(dt_all)),
-#             "dt_to_vessel_median": float(np.median(dt_all)),
-#             "dt_to_vessel_p95": float(np.percentile(dt_all, 95)),
-#             "dt_to_vessel_max": float(np.max(dt_all)),
-#             "within_r_ratio": float(np.mean(dt_all <= r_mm)),
-#         })
-#     if din_all.size:
-#         metrics.update({
-#             "dt_inside_median": float(np.median(din_all)),
-#             "dt_inside_p10": float(np.percentile(din_all, 10)),
-#         })
-
-#     return metrics
 
 def centerline_vs_mask_metrics(sampled_lines, nii_path: str, r_mm: float = 1.0):
     import nibabel as nib
@@ -231,6 +135,15 @@ def centerline_vs_mask_metrics(sampled_lines, nii_path: str, r_mm: float = 1.0):
 
     return out
 
+@dataclass
+class SampledLines:
+    """
+    Rappresentazione "resamplata":
+    - points: lista di array (Ni,3) per ogni linea
+    - total_length: somma lunghezze originali (o resamplate)
+    """
+    lines: List[np.ndarray]
+    total_length: float
 
 # metrica mia
 def node_inside_outside_ratio(sampled_lines: SampledLines, nii_path: str) -> dict:
@@ -273,25 +186,25 @@ def node_inside_outside_ratio(sampled_lines: SampledLines, nii_path: str) -> dic
     }
 
 
-def print_mask_metrics(title: str, m: dict) -> None:
-    print(f"\n{title}")
-    print(f"  total_length:       {m['total_length']:.4f}")
-    print(f"  inside_length:      {m['inside_length']:.4f}")
-    print(f"  outside_length:     {m['outside_length']:.4f}")
-    print(f"  inside_ratio_len:   {m['inside_ratio_len']:.4f}")
-    print(f"  outside_runs:       {m['outside_runs']}")
-    print(f"  max_outside_run:    {m['max_outside_run']:.4f}")
+# def print_mask_metrics(title: str, m: dict) -> None:
+#     print(f"\n{title}")
+#     print(f"  total_length:       {m['total_length']:.4f}")
+#     print(f"  inside_length:      {m['inside_length']:.4f}")
+#     print(f"  outside_length:     {m['outside_length']:.4f}")
+#     print(f"  inside_ratio_len:   {m['inside_ratio_len']:.4f}")
+#     print(f"  outside_runs:       {m['outside_runs']}")
+#     print(f"  max_outside_run:    {m['max_outside_run']:.4f}")
 
-    if "dt_mean(mm)" in m:
-        print(f"  dt_mean(mm):        {m['dt_mean(mm)']:.4f}")
-        print(f"  dt_median(mm):      {m['dt_median(mm)']:.4f}")
-        print(f"  dt_p95(mm):         {m['dt_p95(mm)']:.4f}")
-        print(f"  dt_max(mm):         {m['dt_max(mm)']:.4f}")
-        print(f"  within_r_ratio:     {m['within_r_ratio']:.4f}")
+#     if "dt_mean(mm)" in m:
+#         print(f"  dt_mean(mm):        {m['dt_mean(mm)']:.4f}")
+#         print(f"  dt_median(mm):      {m['dt_median(mm)']:.4f}")
+#         print(f"  dt_p95(mm):         {m['dt_p95(mm)']:.4f}")
+#         print(f"  dt_max(mm):         {m['dt_max(mm)']:.4f}")
+#         print(f"  within_r_ratio:     {m['within_r_ratio']:.4f}")
 
-    if "dt_inside_median" in m:
-        print(f"  dt_inside_median:   {m['dt_inside_median']:.4f}")
-        print(f"  dt_inside_p10:      {m['dt_inside_p10']:.4f}")
+#     if "dt_inside_median" in m:
+#         print(f"  dt_inside_median:   {m['dt_inside_median']:.4f}")
+#         print(f"  dt_inside_p10:      {m['dt_inside_p10']:.4f}")
 
 
 
@@ -697,9 +610,9 @@ def polydata_bounds(pd: vtk.vtkPolyData) -> Tuple[float, float, float, float, fl
     return pd.GetBounds()  # (xmin,xmax,ymin,ymax,zmin,zmax)
 
 
-def print_bounds(name: str, b: Tuple[float, float, float, float, float, float]) -> None:
-    xmin, xmax, ymin, ymax, zmin, zmax = b
-    print(f"{name} bounds: X[{xmin:.3f},{xmax:.3f}]  Y[{ymin:.3f},{ymax:.3f}]  Z[{zmin:.3f},{zmax:.3f}]")
+# def print_bounds(name: str, b: Tuple[float, float, float, float, float, float]) -> None:
+#     xmin, xmax, ymin, ymax, zmin, zmax = b
+#     print(f"{name} bounds: X[{xmin:.3f},{xmax:.3f}]  Y[{ymin:.3f},{ymax:.3f}]  Z[{zmin:.3f},{zmax:.3f}]")
 
 
 # --------------------------
@@ -771,16 +684,6 @@ def resample_polyline(arr: np.ndarray, step: float) -> np.ndarray:
             out[i] = (1 - t) * arr[j] + t * arr[j + 1]
     return out
 
-
-@dataclass
-class SampledLines:
-    """
-    Rappresentazione "resamplata":
-    - points: lista di array (Ni,3) per ogni linea
-    - total_length: somma lunghezze originali (o resamplate)
-    """
-    lines: List[np.ndarray]
-    total_length: float
 
 
 def resample_polydata_lines(pd: vtk.vtkPolyData, step: float) -> SampledLines:
@@ -912,20 +815,17 @@ def precision_recall_f1(
     pred_pd_resampled: vtk.vtkPolyData,
     tau: float
 ) -> Tuple[float, float, float]:
-    """
-    Precision_tau: lunghezza(pred entro tau da GT)/lunghezza(pred)
-    Recall_tau:    lunghezza(GT entro tau da pred)/lunghezza(GT)
-    """
+    
     gt_len = gt_sampled.total_length
     pred_len = pred_sampled.total_length
     if gt_len <= 1e-12 or pred_len <= 1e-12:
         return float("nan"), float("nan"), float("nan")
 
-    # Recall: GT coperta da Pred
+    # Recall: GT covered by Pred
     gt_cov = covered_length_of_sampledlines(gt_sampled, pred_pd_resampled, tau)
     recall = gt_cov / gt_len
 
-    # Precision: Pred supportata da GT
+    # Precision: Pred supported by GT
     pred_cov = covered_length_of_sampledlines(pred_sampled, gt_pd_resampled, tau)
     precision = pred_cov / pred_len
 
@@ -934,12 +834,10 @@ def precision_recall_f1(
     else:
         f1 = 2.0 * precision * recall / (precision + recall)
 
-    # Stampa lunghezze coperte (stessa unità del VTP, nel tuo caso molto probabilmente mm)
-    print(f"GT_covered_length   (tau={tau}): {gt_cov:.4f}")
-    print(f"Pred_covered_length (tau={tau}): {pred_cov:.4f}")
-    print(f"GT_missing_length (approx):   {gt_len - gt_cov:.4f}")
-    print(f"Pred_extra_length (approx):   {pred_len - pred_cov:.4f}")
-
+    # print(f"GT_covered_length   (tau={tau}): {gt_cov:.4f}")
+    # print(f"Pred_covered_length (tau={tau}): {pred_cov:.4f}")
+    # print(f"GT_missing_length (approx):   {gt_len - gt_cov:.4f}")
+    # print(f"Pred_extra_length (approx):   {pred_len - pred_cov:.4f}")
 
     return float(precision), float(recall), float(f1)
 
@@ -1227,10 +1125,7 @@ def evaluate(
         gt_pd = gt_pd_fixed
 
     # 0) bounds + coarse check
-    print_bounds("GT", polydata_bounds(gt_pd))
-    print_bounds("Pred", polydata_bounds(pred_pd))
     mean_coarse = coarse_alignment_check(gt_pd, pred_pd)
-    print(f"Coarse mean distance (pred points -> GT lines): {mean_coarse:.4f}")
 
     # 1) resampling
     gt_s = resample_polydata_lines(gt_pd, step=step)
@@ -1243,58 +1138,48 @@ def evaluate(
         write_vtp(gt_pd_rs, str(outdir_p / f"GT_Resampled_step{step:g}{suf}.vtp"))
         write_vtp(pred_pd_rs, str(outdir_p / f"Pred_Resampled_step{step:g}{suf}.vtp"))
 
-    print(f"-------------------")
-    print(f"GT total length (original):   {gt_s.total_length:.4f}")
-    print(f"Pred total length (original): {pred_s.total_length:.4f}")
-    print(f"Length difference: {pred_s.total_length - gt_s.total_length:.4f}")
-    print(f"GT #resampled polylines: {len(gt_s.lines)}")
-    print(f"Pred #resampled polylines: {len(pred_s.lines)}")
-
     # ---- Segmentation containment (optional) ----
     if mask_path is not None:
         zooms = nib.load(mask_path).header.get_zooms()[:3]
         m_gt = centerline_vs_mask_metrics(gt_s, mask_path, r_mm=r_mm)
         m_pr = centerline_vs_mask_metrics(pred_s, mask_path, r_mm=r_mm)
 
-        print_mask_metrics("GT vs Segmentation", m_gt)
-        print_mask_metrics("Pred vs Segmentation", m_pr)
+        # print_mask_metrics("GT vs Segmentation", m_gt)
+        # print_mask_metrics("Pred vs Segmentation", m_pr)
 
         n_gt = node_inside_outside_ratio(gt_s, mask_path)
         n_pr = node_inside_outside_ratio(pred_s, mask_path)
 
-        print("\nGT node containment:")
-        print(f"  inside_nodes: {n_gt['inside_nodes']} / {n_gt['total_nodes']}  ({n_gt['inside_ratio_nodes']:.4f})")
-        print(f"  outside_nodes:{n_gt['outside_nodes']} / {n_gt['total_nodes']}  ({n_gt['outside_ratio_nodes']:.4f})")
+        # print("\nGT node containment:")
+        # print(f"  inside_nodes: {n_gt['inside_nodes']} / {n_gt['total_nodes']}  ({n_gt['inside_ratio_nodes']:.4f})")
+        # print(f"  outside_nodes:{n_gt['outside_nodes']} / {n_gt['total_nodes']}  ({n_gt['outside_ratio_nodes']:.4f})")
 
-        print("\nPred node containment:")
-        print(f"  inside_nodes: {n_pr['inside_nodes']} / {n_pr['total_nodes']}  ({n_pr['inside_ratio_nodes']:.4f})")
-        print(f"  outside_nodes:{n_pr['outside_nodes']} / {n_pr['total_nodes']}  ({n_pr['outside_ratio_nodes']:.4f})")
-    else:
-        print("\n[Segmentation metrics skipped: no --mask provided]")
+        # print("\nPred node containment:")
+        # print(f"  inside_nodes: {n_pr['inside_nodes']} / {n_pr['total_nodes']}  ({n_pr['inside_ratio_nodes']:.4f})")
+        # print(f"  outside_nodes:{n_pr['outside_nodes']} / {n_pr['total_nodes']}  ({n_pr['outside_ratio_nodes']:.4f})")
+    
 
     # 2) geometric distances (bidirectional)
     d_pred_to_gt = distances_sampledlines_to_polydata(pred_s, gt_pd_rs)
     d_gt_to_pred = distances_sampledlines_to_polydata(gt_s, pred_pd_rs)
 
-    def summarize(name: str, d: np.ndarray) -> None:
-        if d.size == 0:
-            print(f"{name}: empty")
-            return
-        print(f"{name}: mean={np.mean(d):.4f}  median={np.median(d):.4f}  p95={percentile(d,95):.4f}  max={np.max(d):.4f}")
+    # def summarize(name: str, d: np.ndarray) -> None:
+    #     if d.size == 0:
+    #         print(f"{name}: empty")
+    #         return
+    #     print(f"{name}: mean={np.mean(d):.4f}  median={np.median(d):.4f}  p95={percentile(d,95):.4f}  max={np.max(d):.4f}")
 
-    summarize("\nDistances pred->GT", d_pred_to_gt)
-    summarize("Distances GT->pred", d_gt_to_pred)
+    # summarize("\nDistances pred->GT", d_pred_to_gt)
+    # summarize("Distances GT->pred", d_gt_to_pred)
 
     assd = 0.5 * (float(np.mean(d_pred_to_gt)) + float(np.mean(d_gt_to_pred))) if (d_pred_to_gt.size and d_gt_to_pred.size) else float("nan")
     hd95 = max(percentile(d_pred_to_gt, 95), percentile(d_gt_to_pred, 95))
-    print(f"ASSD: {assd:.4f}")
-    print(f"HD95: {hd95:.4f}")
 
     # 3) coverage metrics on length
     precision, recall, f1 = precision_recall_f1(gt_s, pred_s, gt_pd_rs, pred_pd_rs, tau=tau)
-    print(f"Precision_tau (tau={tau}): {precision:.4f}")
-    print(f"Recall_tau    (tau={tau}): {recall:.4f}")
-    print(f"F1_tau        (tau={tau}): {f1:.4f}")
+    # print(f"Precision_tau (tau={tau}): {precision:.4f}")
+    # print(f"Recall_tau    (tau={tau}): {recall:.4f}")
+    # print(f"F1_tau        (tau={tau}): {f1:.4f}")
 
     # coverage lengths (needed for report)
     gt_cov = covered_length_of_sampledlines(gt_s, pred_pd_rs, tau)
@@ -1303,24 +1188,24 @@ def evaluate(
     # 4.A topology stats
     adj_pred = build_adjacency_from_polydata(pred_pd)
     ts_pred = topology_stats_from_adj(adj_pred)
-    print("\nTopology (Pred):")
-    print(f"  nodes={ts_pred.n_nodes}  edges={ts_pred.n_edges}")
-    print(f"  endpoints={ts_pred.n_endpoints}  junctions={ts_pred.n_junctions}")
-    print(f"  degree_hist={ts_pred.degree_hist}")
+    # print("\nTopology (Pred):")
+    # print(f"  nodes={ts_pred.n_nodes}  edges={ts_pred.n_edges}")
+    # print(f"  endpoints={ts_pred.n_endpoints}  junctions={ts_pred.n_junctions}")
+    # print(f"  degree_hist={ts_pred.degree_hist}")
 
     adj_gt = build_adjacency_from_polydata(gt_pd)
     ts_gt = topology_stats_from_adj(adj_gt)
-    print("\nTopology (GT):")
-    print(f"  nodes={ts_gt.n_nodes}  edges={ts_gt.n_edges}")
-    print(f"  endpoints={ts_gt.n_endpoints}  junctions={ts_gt.n_junctions}")
-    print(f"  degree_hist={ts_gt.degree_hist}")
+    # print("\nTopology (GT):")
+    # print(f"  nodes={ts_gt.n_nodes}  edges={ts_gt.n_edges}")
+    # print(f"  endpoints={ts_gt.n_endpoints}  junctions={ts_gt.n_junctions}")
+    # print(f"  degree_hist={ts_gt.degree_hist}")
 
     # 4.B segments
     segs = extract_segments_between_critical_nodes(adj_pred)
-    print(f"\n4.B Pred segments between critical nodes: {len(segs)}")
+    # print(f"\n4.B Pred segments between critical nodes: {len(segs)}")
     if segs:
         lens = [len(s.vertex_ids) for s in segs]
-        print(f"  segment vertex-count: mean={np.mean(lens):.2f}  median={np.median(lens):.2f}  max={np.max(lens)}")
+        # print(f"  segment vertex-count: mean={np.mean(lens):.2f}  median={np.median(lens):.2f}  max={np.max(lens)}")
         
     # --- FINAL REPORT ---
     R = {
@@ -1426,12 +1311,6 @@ def main():
 
     args = ap.parse_args()
 
-    # print voxel spacing only if mask provided
-    if args.mask is not None:
-        img = nib.load(args.mask)
-        zooms = img.header.get_zooms()[:3]
-        print("voxel spacing (mm):", zooms)
-
     evaluate(
         args.gt,
         args.pred,
@@ -1460,11 +1339,9 @@ if __name__ == "__main__":
         gt = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/data/ITKTubeTK_GoldStandardVtp/VascularNetwork-{case_id:03d}.vtp"
         pred = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_basic_extractor/BasicCenterline_{case_id:03d}.vtp"
         mask = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/data/ITKTubeTK_ManualSegmentationNii/labels-{case_id:03d}.nii.gz"
-
-        if mask is not None:
-            img = nib.load(mask)
-            zooms = img.header.get_zooms()[:3]
-            print("voxel spacing (mm):", zooms)
+        
+        # pred = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_prova/ExCenterline_{case_id:03d}.vtp"
+        # pred = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_bogdan/vessel_graph_{case_id:03d}.vtp"
         
         evaluate(
             gt_path=gt,
