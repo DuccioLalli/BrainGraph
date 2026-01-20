@@ -593,16 +593,19 @@ def merge_pred_edges_to_polylines(pred_pd: vtk.vtkPolyData) -> vtk.vtkPolyData:
 
 
 # --------------------------
-# IO
+# Input / Output utilities
 # --------------------------
 
 def read_vtp(path: str) -> vtk.vtkPolyData:
+    """
+    Reads a VTP file and returns the PolyData object.
+    """
     r = vtk.vtkXMLPolyDataReader()
     r.SetFileName(path)
     r.Update()
     pd = r.GetOutput()
     if pd is None or pd.GetNumberOfPoints() == 0:
-        raise ValueError(f"VTP vuoto o non letto: {path}")
+        raise ValueError(f"Empty or unread VTP file: {path}")
     return pd
 
 
@@ -1102,6 +1105,7 @@ def evaluate(
     save_vtp: bool,
     case_id: Optional[int],
 ) -> None:
+    
     gt_pd = read_vtp(gt_path)
     pred_pd = read_vtp(pred_path)
 
@@ -1334,7 +1338,7 @@ if __name__ == "__main__":
     if USE_CLI:
         main()
     else:
-        # Hard-coded quick run
+        # Hard-coded for quick run
         case_id = 3
         gt = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/data/ITKTubeTK_GoldStandardVtp/VascularNetwork-{case_id:03d}.vtp"
         pred = f"C:/Users/ducci/Documents/Università_2025/6_SemesterProject/BrainGraph/output/Output_basic_extractor/BasicCenterline_{case_id:03d}.vtp"
