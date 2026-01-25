@@ -966,8 +966,8 @@ def print_report_A(R: dict) -> None:
     if tg["junctions"] == 0:
         print("        NOTE: GT branch(deg>=3)=0 likely means the GT has a format with no shared branches")
 
-    if "smoothness" in R:
-        print("\n[7] SMOOTHNESS (turning-angle)")
+    if "angular_tortuosity" in R:
+        print("\n[7] ANGULAR-TORTUOSITY")
 
         def _print_sm_block(title: str, M: dict):
             print(f"{title}")
@@ -978,17 +978,20 @@ def print_report_A(R: dict) -> None:
             print(f"  p95_turn_deg:  {fmt(M.get('p95_turn_deg', float('nan')),4)}")
             print(f"  gt_p95_exceedance:    {fmt(M.get('gt_p95_exceedance', float('nan')),4)}\n")
 
-        _print_sm_block("GT", R["smoothness"].get("GT", {}))
-        _print_sm_block("Pred", R["smoothness"].get("Pred", {}))
+        _print_sm_block("GT", R["angular_tortuosity"].get("GT", {}))
+        _print_sm_block("Pred", R["angular_tortuosity"].get("Pred", {}))
 
     print("\n" + "=" * 70)
 
 
 
 
- 
-# magia tentativo
-## 
+# --------------------------
+# Angular Tortuosity Metrics
+# --------------------------
+
+# Setup functions: used to prepare the Polydata for angular-tortusity analysis
+
 def build_adjacency_from_polydata(poly: vtk.vtkPolyData) -> Dict[int, Set[int]]:
     """
     Costruisce adiacenza (undirected) da un vtkPolyData con Lines.
@@ -1153,7 +1156,7 @@ def extract_cycles_degree2(
 def polyseg_to_sampledlines(poly_seg: vtk.vtkPolyData, *, close_cycles: bool = True) -> SampledLines:
     """
     Converte un polydata (anche segment-format) in SampledLines ricostruendo cammini ordinati.
-    Utile per metriche di smoothness (serve ordine).
+    Utile per metriche di angular_tortuosity (serve ordine).
     """
     pts_vtk = poly_seg.GetPoints()
     if pts_vtk is None or poly_seg.GetNumberOfPoints() == 0:
@@ -1183,11 +1186,11 @@ def polyseg_to_sampledlines(poly_seg: vtk.vtkPolyData, *, close_cycles: bool = T
     return SampledLines(lines=out_lines, total_length=total_len)
 
 
-###########
+# Metrics computation
 
 def angular_tortuosity_metrics(sampled: SampledLines, eps: float = 1e-12, *, frac_threshold_deg: float | None = None) -> dict:
     """
-    Turning-angle smoothness metrics computed along each ordered path.
+    Turning-angle angular_tortuosity metrics computed along each ordered path.
 
     ------ Input
     sampled : SampledLines
@@ -1263,13 +1266,14 @@ def angular_tortuosity_metrics(sampled: SampledLines, eps: float = 1e-12, *, fra
     }
 
 
+# Debug functions
 
-def smoothness_debug_polydata_turn_only(sampled: SampledLines, eps: float = 1e-12) -> vtk.vtkPolyData:
+def angular_tortuosity_debug_polydata_turn_only(sampled: SampledLines, eps: float = 1e-12) -> vtk.vtkPolyData:
     """
     PolyData (polylines) con PointData:
       - turn_deg: turning angle locale ai vertici interni (deg)
       - s_mm: ascissa curvilinea lungo il path
-      - path_id: id del cammino (gruppo) usato per smoothness
+      - path_id: id del cammino (gruppo) usato per angular_tortuosity
     """
     pts = vtk.vtkPoints()
     lines = vtk.vtkCellArray()
@@ -1465,6 +1469,7 @@ def plot_polydata_with_nodes_by_scalar(
 
 
 
+
 # --------------------------
 # Main eval
 # --------------------------
@@ -1616,8 +1621,8 @@ def evaluate(
     atm_gt = angular_tortuosity_metrics(gt_s_from_seg, frac_threshold_deg=thr_deg)
     atm_pr = angular_tortuosity_metrics(pred_s_from_seg, frac_threshold_deg=thr_deg)
 
-    dbg_gt = smoothness_debug_polydata_turn_only(gt_s_from_seg)
-    dbg_pr = smoothness_debug_polydata_turn_only(pred_s_from_seg)
+    dbg_gt = angular_tortuosity_debug_polydata_turn_only(gt_s_from_seg)
+    dbg_pr = angular_tortuosity_debug_polydata_turn_only(pred_s_from_seg)
 
     # range comune per turn_deg
     gt_turn = dbg_gt.GetPointData().GetArray("turn_deg").GetRange()
@@ -1650,8 +1655,6 @@ def evaluate(
 
         "coarse_mean": mean_coarse,
 
-        # "gt_len": gt_s.total_length,
-        # "pred_len": pred_s.total_length,
         "gt_len": gt_len_seg,
         "pred_len": pred_len_seg,
         "gt_n_polylines": len(gt_s.lines),
@@ -1690,18 +1693,13 @@ def evaluate(
             "junctions": ts_gt.n_junctions,
             "degree_hist": ts_gt.degree_hist,
         },
-        # "seg4b": {
-        #     "n_segments": len(segs),
-        #     "mean": float(np.mean(lens)) if segs else 0.0,
-        #     "median": float(np.median(lens)) if segs else 0.0,
-        #     "max": int(np.max(lens)) if segs else 0,
-        # },
+
         "gt_path": gt_path,
         "pred_path": pred_path,
         "mask_path": mask_path,
         "gt_seg_info": gt_seg_info,
         "pred_seg_info": pred_seg_info,
-        "smoothness": {"GT": atm_gt, "Pred": atm_pr},
+        "angular_tortuosity": {"GT": atm_gt, "Pred": atm_pr},
     }
 
     # attach segmentation blocks if enabled
