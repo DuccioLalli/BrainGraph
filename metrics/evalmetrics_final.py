@@ -21,19 +21,19 @@ def read_vtp(path: str) -> vtk.vtkPolyData:
     r = vtk.vtkXMLPolyDataReader()
     r.SetFileName(path)
     r.Update()
-    pd = r.GetOutput()
-    if pd is None or pd.GetNumberOfPoints() == 0:
+    poly = r.GetOutput()
+    if poly is None or poly.GetNumberOfPoints() == 0:
         raise ValueError(f"Empty or unread VTP file: {path}")
-    return pd
+    return poly
 
 
-def write_vtp(pd: vtk.vtkPolyData, path: str) -> None:
+def write_vtp(poly: vtk.vtkPolyData, path: str) -> None:
     """
     Saves in VTP format
     """
     w = vtk.vtkXMLPolyDataWriter()
     w.SetFileName(path)
-    w.SetInputData(pd)
+    w.SetInputData(poly)
     w.SetDataModeToAppended()
     if hasattr(w, "SetCompressorTypeToZLib"):
         w.SetCompressorTypeToZLib()
@@ -128,10 +128,10 @@ def plot_polydata(poly_in, tube_radius=0.05, end_r=0.3, mid_r=0.2, br_r=0.5):
         pts.SetNumberOfPoints(len(ids))
         for i, pid in enumerate(ids):
             pts.SetPoint(i, poly_in.GetPoint(int(pid)))
-        pd = vtk.vtkPolyData()
-        pd.SetPoints(pts)
+        poly = vtk.vtkPolyData()
+        poly.SetPoints(pts)
         vg = vtk.vtkVertexGlyphFilter()
-        vg.SetInputData(pd)
+        vg.SetInputData(poly)
         vg.Update()
         return vg.GetOutput()
 
@@ -144,10 +144,10 @@ def plot_polydata(poly_in, tube_radius=0.05, end_r=0.3, mid_r=0.2, br_r=0.5):
     sphere.SetThetaResolution(16)
     sphere.SetPhiResolution(16)
 
-    def make_node_actor(pd, radius, color_rgb):
+    def make_node_actor(poly, radius, color_rgb):
         g = vtk.vtkGlyph3D()
         g.SetSourceConnection(sphere.GetOutputPort())
-        g.SetInputData(pd)
+        g.SetInputData(poly)
         g.SetScaleModeToDataScalingOff()
         g.SetScaleFactor(radius)
         g.Update()
@@ -408,7 +408,7 @@ def topology_stats(poly: vtk.vtkPolyData) -> TopologyStats:
 # --------------------------
 
 # metrica mia, controllata
-def node_inside_outside_ratio(pd_seg: vtk.vtkPolyData, nii_path: str) -> dict:
+def node_inside_outside_ratio(poly_seg: vtk.vtkPolyData, nii_path: str) -> dict:
     """
     Versione su vtkPolyData (segment-format + clean consigliati):
     - considera i NODI (Points del polydata)
@@ -418,8 +418,8 @@ def node_inside_outside_ratio(pd_seg: vtk.vtkPolyData, nii_path: str) -> dict:
     mask = img.get_fdata() > 0
     affine = img.affine
 
-    pts_vtk = pd_seg.GetPoints()
-    if pts_vtk is None or pd_seg.GetNumberOfPoints() == 0:
+    pts_vtk = poly_seg.GetPoints()
+    if pts_vtk is None or poly_seg.GetNumberOfPoints() == 0:
         return {
             "inside_nodes": 0,
             "outside_nodes": 0,
@@ -463,7 +463,7 @@ def world_to_voxel(points_xyz: np.ndarray, affine: np.ndarray) -> np.ndarray:
     return ijk
 
 
-# def _segment_info(pd: vtk.vtkPolyData) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+# def _segment_info(poly: vtk.vtkPolyData) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 #     """
 #     Estrae segmenti come coppie di punti consecutivi dalle celle lineari.
 #     Funziona sia se le celle sono tutte 2-pt (segment-format), sia se ci sono polilinee (>2).
@@ -472,15 +472,15 @@ def world_to_voxel(points_xyz: np.ndarray, affine: np.ndarray) -> np.ndarray:
 #       seg_len: (M,) lunghezze in mm
 #       dP: (M,3) vettori (p1 - p0) (opzionale per debug/estensioni)
 #     """
-#     pts_vtk = pd.GetPoints()
-#     if pts_vtk is None or pd.GetNumberOfPoints() == 0:
+#     pts_vtk = poly.GetPoints()
+#     if pts_vtk is None or poly.GetNumberOfPoints() == 0:
 #         return (np.zeros((0, 3), dtype=np.float64),
 #                 np.zeros((0,), dtype=np.float64),
 #                 np.zeros((0, 3), dtype=np.float64))
 
 #     pts = vtk_to_numpy(pts_vtk.GetData()).astype(np.float64, copy=False)
 
-#     lines = pd.GetLines()
+#     lines = poly.GetLines()
 #     if lines is None or lines.GetNumberOfCells() == 0:
 #         return (np.zeros((0, 3), dtype=np.float64),
 #                 np.zeros((0,), dtype=np.float64),
@@ -542,7 +542,7 @@ def world_to_voxel(points_xyz: np.ndarray, affine: np.ndarray) -> np.ndarray:
 
 
 
-def _segment_info(pd: vtk.vtkPolyData):
+def _segment_info(poly: vtk.vtkPolyData):
     """
     Extract per-segment midpoints, lengths, and 'direction vectors' (dp).
     Returns: mid (M,3), seg_len (M,), dP (M,3).
@@ -550,11 +550,11 @@ def _segment_info(pd: vtk.vtkPolyData):
     So it is compatible with the gt_poly_seg / pred_poly_seg format, obtained from 'sampled_to_polydata(..., as_segments=True)' which is the conversion function used
     """
 
-    if pd is None or pd.GetNumberOfPoints() == 0 or pd.GetNumberOfCells() == 0:
+    if poly is None or poly.GetNumberOfPoints() == 0 or poly.GetNumberOfCells() == 0:
         return (np.zeros((0,3)), np.zeros((0,)), np.zeros((0,3)))
 
-    pts_vtk = pd.GetPoints()
-    lines = pd.GetLines()
+    pts_vtk = poly.GetPoints()
+    lines = poly.GetLines()
     if pts_vtk is None or lines is None or lines.GetNumberOfCells() == 0:
         return (np.zeros((0,3)), np.zeros((0,)), np.zeros((0,3)))
 
@@ -575,7 +575,7 @@ def _segment_info(pd: vtk.vtkPolyData):
 
 
 from scipy.ndimage import distance_transform_edt, map_coordinates
-def centerline_vs_mask_metrics(pd_seg: vtk.vtkPolyData, nii_path: str, r_mm: float = 1.0) -> dict:
+def centerline_vs_mask_metrics(poly_seg: vtk.vtkPolyData, nii_path: str, r_mm: float = 1.0) -> dict:
     """
     Versione su vtkPolyData (segment-format consigliato):
     - campiona distanza dalla maschera sui midpoints dei segmenti
@@ -590,7 +590,7 @@ def centerline_vs_mask_metrics(pd_seg: vtk.vtkPolyData, nii_path: str, r_mm: flo
     dt_to_vessel = distance_transform_edt(~mask, sampling=spacing)
     dt_inside = distance_transform_edt(mask, sampling=spacing)
 
-    mid, seg_len, _ = _segment_info(pd_seg)
+    mid, seg_len, _ = _segment_info(poly_seg)
 
     total_len = float(np.sum(seg_len)) if seg_len.size else 0.0
     if mid.shape[0] == 0:
@@ -666,10 +666,10 @@ def build_cell_locator(poly: vtk.vtkPolyData, use_static: bool = True):
     return loc
 
 
-def polydata_points(pd: vtk.vtkPolyData) -> np.ndarray:
+def polydata_points(poly: vtk.vtkPolyData) -> np.ndarray:
     """Return Nx3 float64 points from vtkPolyData."""
-    pts = pd.GetPoints()
-    if pts is None or pd.GetNumberOfPoints() == 0:
+    pts = poly.GetPoints()
+    if pts is None or poly.GetNumberOfPoints() == 0:
         return np.zeros((0, 3), dtype=np.float64)
     return vtk_to_numpy(pts.GetData()).astype(np.float64, copy=False)
 
@@ -974,7 +974,9 @@ def print_report_A(R: dict) -> None:
             print(f"  total_turn_rad: {fmt(M.get('total_turn_rad', float('nan')),4)}")
             print(f"  turn_per_mm:   {fmt(M.get('turn_per_mm', float('nan')),6)}")
             print(f"  rms_turn_deg:  {fmt(M.get('rms_turn_deg', float('nan')),4)}")
-            print(f"  p95_turn_deg:  {fmt(M.get('p95_turn_deg', float('nan')),4)}\n")
+            print(f"  std_turn_deg:  {fmt(M.get('std_turn_deg', float('nan')),4)}")
+            print(f"  p95_turn_deg:  {fmt(M.get('p95_turn_deg', float('nan')),4)}")
+            print(f"  gt_p95_exceedance:    {fmt(M.get('gt_p95_exceedance', float('nan')),4)}\n")
 
         _print_sm_block("GT", R["smoothness"].get("GT", {}))
         _print_sm_block("Pred", R["smoothness"].get("Pred", {}))
@@ -987,13 +989,13 @@ def print_report_A(R: dict) -> None:
  
 # magia tentativo
 ## 
-def build_adjacency_from_polydata(pd: vtk.vtkPolyData) -> Dict[int, Set[int]]:
+def build_adjacency_from_polydata(poly: vtk.vtkPolyData) -> Dict[int, Set[int]]:
     """
     Costruisce adiacenza (undirected) da un vtkPolyData con Lines.
     Funziona sia con segment-format (2-pt) che con polilinee (>2).
     """
     adj: Dict[int, Set[int]] = {}
-    lines = pd.GetLines()
+    lines = poly.GetLines()
     if lines is None or lines.GetNumberOfCells() == 0:
         return adj
 
@@ -1148,22 +1150,18 @@ def extract_cycles_degree2(
     return cycles
 
 
-def polyseg_to_sampledlines(
-    pd_seg: vtk.vtkPolyData,
-    *,
-    close_cycles: bool = True
-) -> SampledLines:
+def polyseg_to_sampledlines(poly_seg: vtk.vtkPolyData, *, close_cycles: bool = True) -> SampledLines:
     """
     Converte un polydata (anche segment-format) in SampledLines ricostruendo cammini ordinati.
     Utile per metriche di smoothness (serve ordine).
     """
-    pts_vtk = pd_seg.GetPoints()
-    if pts_vtk is None or pd_seg.GetNumberOfPoints() == 0:
+    pts_vtk = poly_seg.GetPoints()
+    if pts_vtk is None or poly_seg.GetNumberOfPoints() == 0:
         return SampledLines(lines=[], total_length=0.0)
 
     pts = vtk_to_numpy(pts_vtk.GetData()).astype(np.float64, copy=False)
 
-    adj = build_adjacency_from_polydata(pd_seg)
+    adj = build_adjacency_from_polydata(poly_seg)
     if not adj:
         return SampledLines(lines=[], total_length=0.0)
 
@@ -1187,27 +1185,46 @@ def polyseg_to_sampledlines(
 
 ###########
 
-def smoothness_metrics_turn_only(sampled: SampledLines, eps: float = 1e-12) -> dict:
+def angular_tortuosity_metrics(sampled: SampledLines, eps: float = 1e-12, *, frac_threshold_deg: float | None = None) -> dict:
     """
-    Smoothness basata SOLO su turning angle.
-    Restituisce metriche direttamente collegate a turn_deg.
+    Turning-angle smoothness metrics computed along each ordered path.
+
+    ------ Input
+    sampled : SampledLines
+        Ordered centerline paths. Each path is an (N,3) array of XYZ points.
+    eps : Small constant to avoid division by zero and to filter degenerate segments.
+    frac_threshold_deg : float | None
+        Optional threshold (in degrees) used to compute `gt_p95_exceedance` as the fraction of angles above this value.
+        If None, `gt_p95_exceedance` is returned as NaN.
+    ------ Output
+    dict
+        - total_turn_rad: sum of all local turning angles (radians), aggregated over all paths.
+        - turn_per_mm: total_turn_rad divided by total polyline length (radians/mm).
+        - rms_turn_deg: root-mean-square of turning angles (degrees).
+        - std_turn_deg: standard deviation of turning angles (degrees).
+        - p95_turn_deg: 95th percentile of turning angles (degrees).
+        - gt_p95_exceedance: fraction of angles above `frac_threshold_deg` (unitless).
     """
+    
     total_len = 0.0
     thetas = []
 
     for arr in sampled.lines:
         if arr.shape[0] < 3:
             continue
+        
+        # compute the segments vectors
         v = arr[1:] - arr[:-1]
         seg_len = np.linalg.norm(v, axis=1)
         total_len += float(np.sum(seg_len))
 
-        # tangenti unit
+        # tangenti unit (normalization) (we want just the direction)
         t = v / (seg_len[:, None] + eps)
-
+        
+        # angles between consecutive segments using dot product
         cos = np.sum(t[:-1] * t[1:], axis=1)
-        cos = np.clip(cos, -1.0, 1.0)
-        theta = np.arccos(cos)  # (n-2,)
+        cos = np.clip(cos, -1.0, 1.0)   # stability
+        theta = np.arccos(cos)          # (n-2,)
 
         valid = (seg_len[:-1] > eps) & (seg_len[1:] > eps)
         theta = theta[valid]
@@ -1220,22 +1237,30 @@ def smoothness_metrics_turn_only(sampled: SampledLines, eps: float = 1e-12) -> d
             "total_turn_rad": 0.0,
             "turn_per_mm": float("nan"),
             "rms_turn_deg": float("nan"),
+            "std_turn_deg": float("nan"),
             "p95_turn_deg": float("nan"),
-            "max_turn_deg": float("nan"),
+            "gt_p95_exceedance": float("nan"),
         }
 
-    th = np.concatenate(thetas)
+    th = np.concatenate(thetas)     # rad
+    th_deg = th * (180.0 / np.pi)   # deg
+    
     total_turn = float(np.sum(th))
-    rms_turn_deg = float(np.sqrt(np.mean(th**2))) * (180.0 / np.pi)
+    
+    rms_turn_deg = float(np.sqrt(np.mean(th_deg**2)))
+    std_turn_deg = float(np.std(th_deg))
+    p95 = float(np.percentile(th_deg, 95))
+
+    gt_p95_exceedance = float("nan") if frac_threshold_deg is None else float(np.mean(th_deg > float(frac_threshold_deg)))
 
     return {
-        "total_turn_rad": total_turn,
-        "turn_per_mm": float(total_turn / total_len),
-        "rms_turn_deg": rms_turn_deg,
-        "p95_turn_deg": float(np.percentile(th * (180.0 / np.pi), 95)),
-        "max_turn_deg": float(np.max(th * (180.0 / np.pi))),
+        "total_turn_rad": total_turn,   # rad
+        "turn_per_mm": float(total_turn / total_len),   # rad/mm
+        "rms_turn_deg": rms_turn_deg,   # deg
+        "std_turn_deg": std_turn_deg,   # deg
+        "p95_turn_deg": p95,            # deg
+        "gt_p95_exceedance": gt_p95_exceedance,       # unitless
     }
-
 
 
 
@@ -1342,7 +1367,7 @@ def _make_discrete_lut(n: int) -> vtk.vtkLookupTable:
 
 
 def plot_polydata_with_nodes_by_scalar(
-    pd: vtk.vtkPolyData,
+    poly: vtk.vtkPolyData,
     scalar_name: str,
     *,
     tube_radius: float = 0.05,
@@ -1350,7 +1375,7 @@ def plot_polydata_with_nodes_by_scalar(
     scalar_range=None,
     categorical: bool = False
 ):
-    arr = pd.GetPointData().GetArray(scalar_name)
+    arr = poly.GetPointData().GetArray(scalar_name)
     if arr is None:
         raise ValueError(f"Scalar '{scalar_name}' not found.")
 
@@ -1364,7 +1389,7 @@ def plot_polydata_with_nodes_by_scalar(
 
     # ----- LINES (tubes) -----
     tube = vtk.vtkTubeFilter()
-    tube.SetInputData(pd)
+    tube.SetInputData(poly)
     tube.SetRadius(tube_radius)
     tube.SetNumberOfSides(12)
     tube.CappingOn()
@@ -1395,7 +1420,7 @@ def plot_polydata_with_nodes_by_scalar(
     sphere.SetRadius(point_radius)
 
     glyph = vtk.vtkGlyph3DMapper()
-    glyph.SetInputData(pd)
+    glyph.SetInputData(poly)
     glyph.SetSourceConnection(sphere.GetOutputPort())
     glyph.SetScalarModeToUsePointFieldData()
     glyph.SelectColorArray(scalar_name)
@@ -1586,8 +1611,10 @@ def evaluate(
     gt_s_from_seg   = polyseg_to_sampledlines(gt_poly_seg, close_cycles=True)
     pred_s_from_seg = polyseg_to_sampledlines(pred_poly_seg, close_cycles=True)
 
-    sm_gt = smoothness_metrics_turn_only(gt_s_from_seg)
-    sm_pr = smoothness_metrics_turn_only(pred_s_from_seg)
+    atm_gt = angular_tortuosity_metrics(gt_s_from_seg) # needed to compute the p95
+    thr_deg = atm_gt["p95_turn_deg"]
+    atm_gt = angular_tortuosity_metrics(gt_s_from_seg, frac_threshold_deg=thr_deg)
+    atm_pr = angular_tortuosity_metrics(pred_s_from_seg, frac_threshold_deg=thr_deg)
 
     dbg_gt = smoothness_debug_polydata_turn_only(gt_s_from_seg)
     dbg_pr = smoothness_debug_polydata_turn_only(pred_s_from_seg)
@@ -1674,7 +1701,7 @@ def evaluate(
         "mask_path": mask_path,
         "gt_seg_info": gt_seg_info,
         "pred_seg_info": pred_seg_info,
-        "smoothness": {"GT": sm_gt, "Pred": sm_pr},
+        "smoothness": {"GT": atm_gt, "Pred": atm_pr},
     }
 
     # attach segmentation blocks if enabled
@@ -1769,7 +1796,7 @@ if __name__ == "__main__":
             gt_path=gt,
             pred_path=pred,
             step=0.3,
-            tau=0.5,
+            tau=0.5134,
             mask_path=mask,
             r_mm=1.0,
             outdir=r"C:\Users\ducci\Documents\Università_2025\6_SemesterProject\BrainGraph\output\Output_evaluations",
