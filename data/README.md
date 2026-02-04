@@ -30,3 +30,28 @@ BrainGraph/
 │   │   ├── vessel_graph_aligned_002.vtp
 │   │   ├── vessel_graph_aligned_003.vtp
 ```
+
+---
+
+Notes:
+- `data/output/labels-00x/` is created by `vedo_extractor_batch`.
+- `outputCenterlinesOnly/` is a convenience folder used to collect all extracted `.vtp` centerlines in one place for evaluation.
+
+---
+
+## `copy_grouped_centerlines.py`
+
+This script gathers centerline graph files from multiple `labels-*` folders into a single directory.
+
+### What it does
+- Scans `data/output/` for subfolders named `labels-<suffix>`
+- For each folder, looks for `vessel_graph_aligned.vtp`
+- Copies it to `data/outputCenterlinesOnly/` as:
+  - `vessel_graph_aligned_<suffix>.vtp`
+- Prints `[MISSING]` if a folder does not contain the expected file
+- **Overwrites** destination files if they already exist
+
+### Run
+```bash
+python copy_grouped_centerlines.py
+
