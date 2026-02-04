@@ -1,4 +1,4 @@
-## Data folder structure
+# Data folder structure
 
 Whenever we refer to the `data/` directory, we assume the following internal structure:
 
@@ -39,9 +39,9 @@ Notes:
 
 ---
 
-## `copy_grouped_centerlines.py`
+### `copy_grouped_centerlines.py`
 
-This script gathers centerline graph files from multiple `labels-*` folders into a single directory.
+This script gathers centerline files from multiple `labels-*` folders into a single directory.
 
 ### What it does
 - Scans `data/output/` for subfolders named `labels-<suffix>`
@@ -51,7 +51,4 @@ This script gathers centerline graph files from multiple `labels-*` folders into
 - Prints `[MISSING]` if a folder does not contain the expected file
 - **Overwrites** destination files if they already exist
 
-### Run
-```bash
-python copy_grouped_centerlines.py
 
