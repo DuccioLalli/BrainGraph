@@ -42,11 +42,20 @@ BrainGraph/
 │   │   ├── labels-001.nii.gz
 │   │   ├── labels-002.nii.gz
 │   │   └── labels-003.nii.gz
+
 │   └── output/ (Automatically generated)
-│       ├── vessel_data.pkl  <-- NetworkX Graph + Metadata
-│       └── vessel_graph_aligned.vtp  <-- 3D Mesh for Slicer/Visualization
-    └── CaravelCenterlines
-│       └── labels-001.vtp  <-- Visualization (OLD SOLUTION)
+│   │   ├── vessel_data.pkl  <-- NetworkX Graph + Metadata
+│   │    └── vessel_graph_aligned.vtp  <-- 3D Mesh for Slicer/Visualization
+
+│   ├── ITKTubeTK_GoldStandardVtp/         (gold standard centerlines)
+│   │   ├── VascularNetwork-002.vtp
+    └── CaravelCenterlines/                (OLD SOLUTION centerlines)
+│       └── labels-001.vtp  <-- Visualization
+
+│   ├── outputCenterlinesOnly/         (it's the same as output folder from above, but all the VTPs combined into a single folder)
+│   │   ├── vessel_graph_aligned_001.vtp         (same vessel_graph_aligned + numerical suffix)
+        ├── vessel_graph_aligned_002.vtp
+        ├── vessel_graph_aligned_003.vtp
 ```
 ## 🔍 Debugging & Visualization
 
