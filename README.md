@@ -35,6 +35,8 @@ This is the primary pipeline for converting NIfTI segmentations into brain graph
 
 The batch extractor expects a specific directory structure. Place your NIfTI segmentations in a source folder; the script will generate a corresponding output folder for the graphs.
 
+**ATTENTION** The only mandatory folder to run `vedo_extractor_batch` is the *input* one, named ITKTubeTK_ManualSegmentationNii in our example. All the others are needed for processing/evaluation metrics.
+
 ```text
 BrainGraph/
 ├── data/
@@ -43,7 +45,7 @@ BrainGraph/
 │   │   ├── labels-002.nii.gz
 │   │   └── labels-003.nii.gz
 
-│   ├── output/ (Automatically generated)
+│   ├── output/labels-00x                (Automatically generated)
 │   │   ├── vessel_data.pkl              <-- NetworkX Graph + Metadata
 │   │   └── vessel_graph_aligned.vtp     <-- PolyData for Slicer/Visualization
 
