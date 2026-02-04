@@ -8,7 +8,7 @@
     * `vedo_extractor_batch.py`: **(Main Script)** The production-ready batch processor. Extracts smoothed, aligned, and validated graphs from NIfTI masks.
     * `laplace_extractor.py`: Our Week1 solution (just basic extractor smoothed basically)
     * `batch_Caravel_Centerline_extractor.py`: Initial solution before us. Command to use: `python .\extraction\batch_Caravel_Centerline_extractor --in_dir "...\data\ITKTubeTK_ManualSegmentationNii" --out_dir "...\data\CaravelCenterlines" --connectivity 26 --overwrite --prune`. **If you want to use this, please use shift_coordinate_system as well afterwards.**.
-* **`/extra`**: Utility and diagnostic tools.
+* **`/utils`**: Utility and diagnostic tools.
 `
     * `visualization_graph_full.py`: Very extremely helpful visualizer. If you feel like something is wrong with your graph or if you want to tune parameters or if you want to see exactly how connections are being done, run the segmentation via this.
     * `pkl_to_vtp.py`: Utility to convert exported Pickle (`.pkl`) graphs into PolyData (`.vtp`) format for use in 3D Slicer(or other visualizers).
@@ -35,7 +35,7 @@ This is the primary pipeline for converting NIfTI segmentations into brain graph
 
 The batch extractor expects a specific directory structure. Place your NIfTI segmentations in a source folder; the script will generate a corresponding output folder for the graphs.
 
-**ATTENTION** The only mandatory folder to run `vedo_extractor_batch` is the *input* one, named ITKTubeTK_ManualSegmentationNii in our example. All the others are needed for processing/evaluation metrics.
+**ATTENTION!!** The only mandatory folder to run `vedo_extractor_batch` is the *input* one, named ITKTubeTK_ManualSegmentationNii in our example. All the others are needed for processing/evaluation metrics.
 
 ```text
 BrainGraph/
@@ -48,6 +48,9 @@ BrainGraph/
 │   ├── output/labels-00x                (Automatically generated)
 │   │   ├── vessel_data.pkl              <-- NetworkX Graph + Metadata
 │   │   └── vessel_graph_aligned.vtp     <-- PolyData for Slicer/Visualization
+
+
+(FOR THE EVALUATION PART)
 
 │   ├── ITKTubeTK_GoldStandardVtp/         (gold standard centerlines)
 │   │   ├── VascularNetwork-002.vtp
