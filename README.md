@@ -7,7 +7,7 @@
 * **`/extraction`**: Core processing engines.
     * `vedo_extractor_batch.py`: **(Main Script)** The production-ready batch processor. Extracts smoothed, aligned, and validated graphs from NIfTI masks.
     * `laplace_extractor.py`: Our Week1 solution (just basic extractor smoothed basically)
-    * `batch_Caravel_Centerline_extractor.py`: Initial solution before us. Command to use: `python .\extraction\batch_Caravel_Centerline_extractor --in_dir "...\data\ITKTubeTK_ManualSegmentationNii" --out_dir "...\data\CaravelCenterlineExtractor" --connectivity 26 --overwrite --prune. **If you want to use this, please use shift_coordinate_system as well afterwards.**.
+    * `batch_Caravel_Centerline_extractor.py`: Initial solution before us. Command to use: `python .\extraction\batch_Caravel_Centerline_extractor --in_dir "...\data\ITKTubeTK_ManualSegmentationNii" --out_dir "...\data\CaravelCenterlineExtractor" --connectivity 26 --overwrite --prune`. **If you want to use this, please use shift_coordinate_system as well afterwards.**.
 * **`/extra`**: Utility and diagnostic tools.
 `
     * `visualization_graph_full.py`: Very extremely helpful visualizer. If you feel like something is wrong with your graph or if you want to tune parameters or if you want to see exactly how connections are being done, run the segmentation via this.
