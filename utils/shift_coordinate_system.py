@@ -12,7 +12,7 @@ import numpy as np
 INPUT_VTP_FOLDER = r"D:\Academic Stuff\BrainGraph\data\ITKTubeTK_GoldStandardVtp"
 
 # Where you want to save the corrected files
-OUTPUT_FIXED_VTP_FOLDER = r"D:\Academic Stuff\BrainGraph\data\drr"
+OUTPUT_FIXED_VTP_FOLDER = r"D:\Academic Stuff\BrainGraph\data\OutputFixedVtp"
 
 # 2. THE ALIGNMENT MATRIX (The "Slicer Flip")
 # This matrix flips the X and Y coordinates to fix RAS/LPS orientation issues
@@ -22,7 +22,6 @@ SLICER_MATRIX = np.array([
     [0.0, 0.0, 1.0, 0.0],
     [0.0, 0.0, 0.0, 1.0]
 ])
-
 
 # =========================================================================
 #                          FIXING FUNCTION
