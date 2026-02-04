@@ -42,8 +42,8 @@ BrainGraph/
 │   │   ├── labels-002.nii.gz
 │   │   └── labels-003.nii.gz
 │   └── output/ (Automatically generated)
-│       ├── vessel_graph_001.pkl  <-- NetworkX Graph + Metadata
-│       └── vessel_graph_001.vtp  <-- 3D Mesh for Slicer/Visualization
+│       ├── vessel_data.pkl  <-- NetworkX Graph + Metadata
+│       └── vessel_graph_aligned.vtp  <-- 3D Mesh for Slicer/Visualization
 ```
 ## 🔍 Debugging & Visualization
 
