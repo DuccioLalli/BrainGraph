@@ -738,7 +738,7 @@ def evaluate_to_dict(
 
     # --- Save the original num_nodes
     gt_original_num_nodes = int(gt_poly.GetNumberOfPoints())
-    red_original_num_nodes = int(pred_poly.GetNumberOfPoints())
+    pred_original_num_nodes = int(pred_poly.GetNumberOfPoints())
     
     # --- Resampling
     gt_s = resample_polydata_lines(gt_poly, step=step)
