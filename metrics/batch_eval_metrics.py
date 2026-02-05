@@ -8,7 +8,9 @@ from typing import Dict, List, Tuple, Iterable, Set, Optional, Any
 import numpy as np
 import vtk
 from pathlib import Path
-import nibabel as nib
+from vtk.util.numpy_support import vtk_to_numpy
+import json
+import re
 
 # --------------------------
 # Input / Output utilities
@@ -22,16 +24,6 @@ def read_vtp(path: str) -> vtk.vtkPolyData:
     if pd is None or pd.GetNumberOfPoints() == 0:
         raise ValueError(f"Empty or unread VTP file: {path}")
     return pd
-
-
-# --------------------------
-# Debug helpers
-# --------------------------
-
-from vtk.util.numpy_support import vtk_to_numpy
-from scipy.ndimage import distance_transform_edt, map_coordinates
-import json
-import re
 
 
 #############################################
@@ -219,53 +211,8 @@ def topology_stats(poly: vtk.vtkPolyData) -> TopologyStats:
 
 
 # --------------------------
-# Segmentation consistency
+# Segment helpers
 # --------------------------
-
-def world_to_voxel(points_xyz: np.ndarray, affine: np.ndarray) -> np.ndarray:
-    inv = np.linalg.inv(affine)
-    N = points_xyz.shape[0]
-    homog = np.c_[points_xyz, np.ones((N, 1), dtype=np.float64)]
-    ijk = (inv @ homog.T).T[:, :3]
-    return ijk
-
-
-def node_inside_outside_ratio(pd_seg: vtk.vtkPolyData, nii_path: str) -> dict:
-    img = nib.load(nii_path)
-    mask = img.get_fdata() > 0
-    affine = img.affine
-
-    pts_vtk = pd_seg.GetPoints()
-    if pts_vtk is None or pd_seg.GetNumberOfPoints() == 0:
-        return {
-            "inside_nodes": 0,
-            "outside_nodes": 0,
-            "total_nodes": 0,
-            "inside_ratio_nodes": float("nan"),
-            "outside_ratio_nodes": float("nan"),
-        }
-
-    pts = vtk_to_numpy(pts_vtk.GetData()).astype(np.float64, copy=False)
-    ijk = world_to_voxel(pts, affine)
-    ijk_round = np.rint(ijk).astype(np.int64)
-
-    sx, sy, sz = mask.shape
-    x = np.clip(ijk_round[:, 0], 0, sx - 1)
-    y = np.clip(ijk_round[:, 1], 0, sy - 1)
-    z = np.clip(ijk_round[:, 2], 0, sz - 1)
-
-    vals = mask[x, y, z]
-    inside = int(np.sum(vals))
-    total = int(vals.size)
-
-    return {
-        "inside_nodes": inside,
-        "outside_nodes": total - inside,
-        "total_nodes": total,
-        "inside_ratio_nodes": (inside / total) if total > 0 else float("nan"),
-        "outside_ratio_nodes": ((total - inside) / total) if total > 0 else float("nan"),
-    }
-
 
 def _segment_info(pd: vtk.vtkPolyData):
     if pd is None or pd.GetNumberOfPoints() == 0 or pd.GetNumberOfCells() == 0:
@@ -289,55 +236,6 @@ def _segment_info(pd: vtk.vtkPolyData):
     seg_len = np.linalg.norm(dP, axis=1)
     mid = 0.5 * (p0 + p1)
     return mid, seg_len, dP
-
-
-def centerline_vs_mask_metrics(pd_seg: vtk.vtkPolyData, nii_path: str, r_mm: float = 1.0) -> dict:
-    img = nib.load(nii_path)
-    mask = img.get_fdata() > 0
-    affine = img.affine
-    spacing = img.header.get_zooms()[:3]
-
-    dt_to_vessel = distance_transform_edt(~mask, sampling=spacing)
-    dt_inside = distance_transform_edt(mask, sampling=spacing)
-
-    mid, seg_len, _ = _segment_info(pd_seg)
-
-    total_len = float(np.sum(seg_len)) if seg_len.size else 0.0
-    if mid.shape[0] == 0:
-        return {
-            "total_length": total_len,
-            "inside_length": 0.0,
-            "outside_length": total_len,
-            "inside_ratio_len": float("nan") if total_len <= 1e-12 else 0.0,
-        }
-
-    ijk = world_to_voxel(mid, affine)
-    x, y, z = ijk[:, 0], ijk[:, 1], ijk[:, 2]
-
-    d_out = map_coordinates(dt_to_vessel, [x, y, z], order=1, mode="nearest")
-    d_in = map_coordinates(dt_inside, [x, y, z], order=1, mode="nearest")
-
-    inside_tol = 0.9 * float(min(spacing))
-    inside_flag = d_out < inside_tol
-
-    inside_len = float(np.sum(seg_len[inside_flag]))
-    outside_len = float(total_len - inside_len)
-    inside_ratio = inside_len / total_len if total_len > 1e-12 else float("nan")
-
-    out = {
-        "total_length": total_len,
-        "inside_length": inside_len,
-        "outside_length": outside_len,
-        "inside_ratio_len": inside_ratio,
-        "dt_mean(mm)": float(np.mean(d_out)),
-        "dt_median(mm)": float(np.median(d_out)),
-        "dt_p95(mm)": float(np.percentile(d_out, 95)),
-        "dt_max(mm)": float(np.max(d_out)),
-        "within_r_ratio": float(np.mean(d_out <= float(r_mm))),
-        "dt_inside_median": float(np.median(d_in)),
-        "dt_inside_p10": float(np.percentile(d_in, 10)),
-    }
-    return out
 
 
 # --------------------------
@@ -723,8 +621,6 @@ def evaluate_to_dict(
     *,
     step: float,
     tau: float,
-    mask_path: Optional[str],
-    r_mm: float,
     case_id: Optional[int],
     use_static: bool = True,
 ) -> dict:
@@ -767,15 +663,6 @@ def evaluate_to_dict(
     ts_pred = topology_stats(pred_poly_rs)
     ts_gt = topology_stats(gt_poly_rs)
 
-    # --- Segmentation containment (optional)
-    zooms = None
-    if mask_path is not None:
-        zooms = nib.load(mask_path).header.get_zooms()[:3]
-        m_gt = centerline_vs_mask_metrics(gt_poly_seg, mask_path, r_mm=r_mm)
-        m_pr = centerline_vs_mask_metrics(pred_poly_seg, mask_path, r_mm=r_mm)
-        n_gt = node_inside_outside_ratio(gt_poly_seg, mask_path)
-        n_pr = node_inside_outside_ratio(pred_poly_seg, mask_path)
-
     # --- Geometry distances (segment-format)
     d_pred_to_gt = distances_polydata_to_polydata(pred_poly_seg, gt_poly_seg, use_static=use_static)
     d_gt_to_pred = distances_polydata_to_polydata(gt_poly_seg, pred_poly_seg, use_static=use_static)
@@ -803,8 +690,6 @@ def evaluate_to_dict(
         "case_tag": f"(case_{case_id:03d})" if case_id is not None else "",
         "step": step,
         "tau": tau,
-        "r_mm": r_mm,
-        "voxel_spacing": zooms if mask_path is not None else None,
 
         "gt_bounds": (
             lambda b: f"X[{b[0]:.3f},{b[1]:.3f}]  Y[{b[2]:.3f},{b[3]:.3f}]  Z[{b[4]:.3f},{b[5]:.3f}]"
@@ -856,7 +741,6 @@ def evaluate_to_dict(
 
         "gt_path": gt_path,
         "pred_path": pred_path,
-        "mask_path": mask_path,
 
         "gt_seg_info": gt_seg_info,
         "pred_seg_info": pred_seg_info,
@@ -867,13 +751,6 @@ def evaluate_to_dict(
         "pred_original_num_nodes": pred_original_num_nodes,
 
     }
-
-    if mask_path is not None:
-        R["seg_enabled"] = True
-        R["seg"] = {"GT": m_gt, "Pred": m_pr}
-        R["nodes"] = {"GT": n_gt, "Pred": n_pr}
-    else:
-        R["seg_enabled"] = False
 
     return R
 
@@ -963,7 +840,6 @@ def write_csv(rows: List[Dict[str, Any]], path: Path) -> None:
 
 
 EXCLUDE_JSON_KEYS = {
-    "voxel_spacing",
     "gt_bounds",
     "pred_bounds",
     "gt_n_polylines",
@@ -980,12 +856,10 @@ def main():
 
     ap.add_argument("--pred_dir", required=True, help="Folder with predicted .vtp")
     ap.add_argument("--gt_dir", required=True, help="Folder with GT .vtp")
-    ap.add_argument("--mask_dir", default=None, help="Optional folder with masks (.nii/.nii.gz)")
     ap.add_argument("--out_dir", required=True, help="Output folder")
 
     ap.add_argument("--step", type=float, default=0.3)
     ap.add_argument("--tau", type=float, default=0.6)
-    ap.add_argument("--rmm", type=float, default=1.0)
 
     ap.add_argument("--recursive", action="store_true", help="Search recursively")
     ap.add_argument("--pad", type=int, default=3, help="Case-id padding (default 3 -> 003)")
@@ -1005,13 +879,8 @@ def main():
     if not gt_dir.exists():
         raise FileNotFoundError(f"gt_dir not found: {gt_dir}")
 
-    mask_dir = Path(args.mask_dir) if args.mask_dir else None
-    if mask_dir is not None and not mask_dir.exists():
-        raise FileNotFoundError(f"mask_dir not found: {mask_dir}")
-
     pred_map = build_map(pred_dir, exts=(".vtp",), recursive=args.recursive, pad=args.pad)
     gt_map = build_map(gt_dir, exts=(".vtp",), recursive=args.recursive, pad=args.pad)
-    mask_map = build_map(mask_dir, exts=(".nii", ".nii.gz"), recursive=args.recursive, pad=args.pad) if mask_dir else {}
 
     common = sorted(set(pred_map.keys()) & set(gt_map.keys()))
     missing_pred = sorted(set(gt_map.keys()) - set(pred_map.keys()))
@@ -1037,7 +906,6 @@ def main():
         for i, ck in enumerate(common, 1):
             gt_path = gt_map[ck]
             pred_path = pred_map[ck]
-            mask_path = str(mask_map[ck]) if ck in mask_map else None
 
             try:
                 R = evaluate_to_dict(
@@ -1045,8 +913,6 @@ def main():
                     pred_path=str(pred_path),
                     step=args.step,
                     tau=args.tau,
-                    mask_path=mask_path,
-                    r_mm=args.rmm,
                     case_id=int(ck),
                     use_static=args.use_static,
                 )
@@ -1077,7 +943,6 @@ def main():
                     "error": str(e),
                     "gt_path": str(gt_path),
                     "pred_path": str(pred_path),
-                    "mask_path": mask_path,
                 }
                 f.write(json.dumps(err, ensure_ascii=False) + "\n")
                 rows_flat.append(flatten_dict(err))
