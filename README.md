@@ -14,6 +14,9 @@
     * `pkl_to_vtp.py`: Utility to convert exported Pickle (`.pkl`) graphs into PolyData (`.vtp`) format for use in 3D Slicer(or other visualizers).
     * `shift_coordinate_system`: Utility to shift from old system (used by Caravel) to our system.
 
+* **`/metrics`**: Evaluation utilities to compare predicted centerlines against ground-truth `.vtp` files and export per-case / aggregated reports (e.g., JSONL + CSV).
+  * See **`/metrics/README.md`** for usage details, metrics definitions, and example commands.
+
 ---
 
 ## 🚀 The Core: `vedo_extractor_batch.py`
