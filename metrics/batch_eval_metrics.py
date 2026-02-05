@@ -25,7 +25,7 @@ def read_vtp(path: str) -> vtk.vtkPolyData:
 
 
 # --------------------------
-# Debug helpers (kept, but not required in batch)
+# Debug helpers
 # --------------------------
 
 from vtk.util.numpy_support import vtk_to_numpy
@@ -33,6 +33,10 @@ from scipy.ndimage import distance_transform_edt, map_coordinates
 import json
 import re
 
+
+#############################################
+# PREPROCESS
+#############################################
 
 # --------------------------
 # Fusion of non unique Ids
@@ -156,6 +160,10 @@ def sampled_to_polydata(sampled: SampledLines, *, as_segments: bool = False) -> 
     poly.SetLines(lines)
     return poly
 
+
+#############################################
+# METRICS
+#############################################
 
 # --------------------------
 # Topology
@@ -451,7 +459,7 @@ def coverage_metrics(gt_poly_seg: vtk.vtkPolyData, pred_poly_seg: vtk.vtkPolyDat
 
 
 # --------------------------
-# Segment-format basic info (your final desired output)
+# Segment-format basic info
 # --------------------------
 
 def segment_format_basic_info(poly: vtk.vtkPolyData) -> dict:
@@ -489,7 +497,7 @@ def segment_format_basic_info(poly: vtk.vtkPolyData) -> dict:
 
 
 # --------------------------
-# Smoothness (your logic)
+# angular_tortuosity
 # --------------------------
 
 def build_adjacency_from_polydata(pd: vtk.vtkPolyData) -> Dict[int, Set[int]]:
@@ -657,7 +665,7 @@ def polyseg_to_sampledlines(pd_seg: vtk.vtkPolyData, *, close_cycles: bool = Tru
     return SampledLines(lines=out_lines, total_length=total_len)
 
 
-def smoothness_metrics_turn_only(sampled: SampledLines, eps: float = 1e-12) -> dict:
+def angular_tortuosity_metrics(sampled: SampledLines, eps: float = 1e-12, *, frac_threshold_deg: float | None = None) -> dict:
     total_len = 0.0
     thetas = []
 
@@ -690,21 +698,24 @@ def smoothness_metrics_turn_only(sampled: SampledLines, eps: float = 1e-12) -> d
         }
 
     th = np.concatenate(thetas)
+    th_deg = th * (180.0 / np.pi)
     total_turn = float(np.sum(th))
     rms_turn_deg = float(np.sqrt(np.mean(th**2))) * (180.0 / np.pi)
-
+    gt_p95_exceedance = float("nan") if frac_threshold_deg is None else float(np.mean(th_deg > float(frac_threshold_deg)))
+    
     return {
         "total_turn_rad": total_turn,
         "turn_per_mm": float(total_turn / total_len),
         "rms_turn_deg": rms_turn_deg,
         "p95_turn_deg": float(np.percentile(th * (180.0 / np.pi), 95)),
         "max_turn_deg": float(np.max(th * (180.0 / np.pi))),
+        "gt_p95_exceedance": gt_p95_exceedance,
     }
 
 
-# --------------------------
-# Core evaluation (same outputs as your final R)
-# --------------------------
+#############################################
+# EVALUATION
+#############################################
 
 def evaluate_to_dict(
     gt_path: str,
@@ -725,6 +736,10 @@ def evaluate_to_dict(
     # --- Fusion of non-unique Ids (Pred)
     pred_poly = fusion_nonUniqueIds(pred_poly)
 
+    # --- Save the original num_nodes
+    gt_original_num_nodes = int(gt_poly.GetNumberOfPoints())
+    red_original_num_nodes = int(pred_poly.GetNumberOfPoints())
+    
     # --- Resampling
     gt_s = resample_polydata_lines(gt_poly, step=step)
     gt_poly_rs = sampled_to_polydata(gt_s, as_segments=False)
@@ -733,6 +748,7 @@ def evaluate_to_dict(
     pred_poly_rs = sampled_to_polydata(pred_s, as_segments=False)
 
     # --- Fusion after resampling (Pred)
+    gt_poly_rs = fusion_nonUniqueIds(gt_poly_rs)
     pred_poly_rs = fusion_nonUniqueIds(pred_poly_rs)
 
     # --- Format conversion to segment-format
@@ -741,7 +757,8 @@ def evaluate_to_dict(
 
     # --- Fusion in segment-format (Pred)
     pred_poly_seg = fusion_nonUniqueIds(pred_poly_seg)
-
+    gt_poly_seg = fusion_nonUniqueIds(gt_poly_seg)
+    
     # --- Info for print/report
     gt_seg_info = segment_format_basic_info(gt_poly_seg)
     pred_seg_info = segment_format_basic_info(pred_poly_seg)
@@ -773,13 +790,15 @@ def evaluate_to_dict(
         gt_poly_seg, pred_poly_seg, tau=tau, use_static=use_static
     )
 
-    # --- Smoothness (turning-angle)
+    # --- angular_tortuosity (turning-angle)
     gt_s_from_seg = polyseg_to_sampledlines(gt_poly_seg, close_cycles=True)
     pred_s_from_seg = polyseg_to_sampledlines(pred_poly_seg, close_cycles=True)
-    sm_gt = smoothness_metrics_turn_only(gt_s_from_seg)
-    sm_pr = smoothness_metrics_turn_only(pred_s_from_seg)
+    sm_gt0 = angular_tortuosity_metrics(gt_s_from_seg)
+    thr = sm_gt0["p95_turn_deg"]
+    sm_gt = angular_tortuosity_metrics(gt_s_from_seg, frac_threshold_deg=thr)
+    sm_pr = angular_tortuosity_metrics(pred_s_from_seg, frac_threshold_deg=thr)
 
-    # --- FINAL REPORT dict (same fields you set in your final code)
+    # --- FINAL REPORT dict
     R = {
         "case_tag": f"(case_{case_id:03d})" if case_id is not None else "",
         "step": step,
@@ -842,7 +861,11 @@ def evaluate_to_dict(
         "gt_seg_info": gt_seg_info,
         "pred_seg_info": pred_seg_info,
 
-        "smoothness": {"GT": sm_gt, "Pred": sm_pr},
+        "angular_tortuosity": {"GT": sm_gt, "Pred": sm_pr},
+        
+        "gt_original_num_nodes": gt_original_num_nodes,
+        "pred_original_num_nodes": pred_original_num_nodes,
+
     }
 
     if mask_path is not None:
@@ -854,6 +877,10 @@ def evaluate_to_dict(
 
     return R
 
+
+#############################################
+# BATCH RUNNER
+#############################################
 
 # --------------------------
 # Batch utils: matching cases by numeric id in filename
