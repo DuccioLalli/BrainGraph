@@ -957,8 +957,7 @@ def main():
     ap.add_argument("--out_dir", required=True, help="Output folder")
 
     ap.add_argument("--step", type=float, default=0.3)
-    ap.add_argument("--tau", type=float, default=0.6)
-    ap.add_argument("--rmm", type=float, default=1.0)
+    ap.add_argument("--tau", type=float, default=0.5134)
 
     ap.add_argument("--recursive", action="store_true", help="Search recursively")
     ap.add_argument("--pad", type=int, default=3, help="Case-id padding (default 3 -> 003)")
