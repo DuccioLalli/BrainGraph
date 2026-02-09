@@ -96,9 +96,12 @@ If enabled (default), the script writes:
 
 ### Minimal example
 ```bash
-python batch_eval_metrics.py \
-  --pred_dir "/path/to/pred_vtps" \
-  --gt_dir "/path/to/gt_vtps" \
-  --out_dir "/path/to/output" \
+python metrics/batch_eval_metrics.py \
+  --pred_dir "data/CaravelCenterlines" \
+  --gt_dir "data/ITKTubeTK_GoldStandardVtp" \
+  --out_dir "evaluation_res" \
   --step 0.3 \
   --tau 0.5134
+
+The `--pred_dir` can also be: `data/outputCenterlinesOnly`, based on the centerline we want to test against the GT.
+All outputs are written to `evaluation_re` folder.
