@@ -17,6 +17,8 @@
 * **`/metrics`**: Evaluation utilities to compare predicted centerlines against ground-truth `.vtp` files and export per-case / aggregated reports (e.g., JSONL + CSV).
   * See **`/metrics/README.md`** for usage details, metrics definitions, and example commands.
 
+* **`/data`**: Datasets and related resources, with a dedicated README describing the contents and how to use them.
+
 ---
 
 ## 🚀 The Core: `vedo_extractor_batch.py`
