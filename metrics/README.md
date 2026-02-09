@@ -99,10 +99,10 @@ If enabled (default), the script writes:
 python metrics/batch_eval_metrics.py \
   --pred_dir "data/CaravelCenterlines" \
   --gt_dir "data/ITKTubeTK_GoldStandardVtp" \
-  --out_dir "evaluation_res" \
+  --out_dir "metrics/results" \
   --step 0.3 \
   --tau 0.5134
 ```
 
-The `--pred_dir` can also be: `data/outputCenterlinesOnly`, based on the centerline we want to test against the GT.
-All outputs are written to `evaluation_re` folder.
+The `--pred_dir` can also be: `data/outputCenterlinesOnly`, based on the centerlines we want to test against the GT.
+All outputs are written to `metrics/results` folder.
