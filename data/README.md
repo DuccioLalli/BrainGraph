@@ -1,5 +1,7 @@
 # Data folder structure
 
+**NOTE:** All the data used and the extracted centerlines (on which the metrics are computed) are available at: https://drive.google.com/drive/folders/1TV5TTIBLfFnyWa7O4DGwa1tl7SR28O7E?usp=sharing
+
 Whenever we refer to the `data/` directory, we assume the following internal structure:
 
 ```text
