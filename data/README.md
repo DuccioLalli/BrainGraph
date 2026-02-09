@@ -19,16 +19,18 @@ BrainGraph/
 
 │   ├── ITKTubeTK_GoldStandardVtp/         (gold standard centerlines)
 │   │   ├── VascularNetwork-002.vtp
+│   │   ├── VascularNetwork-003.vtp
+│   │   ├── VascularNetwork-004.vtp
 
 │   ├── CaravelCenterlines/                (OLD SOLUTION centerlines)
-│   │    ├── labels-001.vtp
 │   │    ├── labels-002.vtp
-│   │    ├── labels-003.vtp    
+│   │    ├── labels-003.vtp
+│   │    ├── labels-004.vtp    
 
 │   ├── outputCenterlinesOnly/           (it's the same as output folder from above, but all the VTPs combined into a single folder)
-│   │   ├── vessel_graph_aligned_001.vtp         (same vessel_graph_aligned + numerical suffix)
-│   │   ├── vessel_graph_aligned_002.vtp
+│   │   ├── vessel_graph_aligned_002.vtp         (same vessel_graph_aligned + numerical suffix)
 │   │   ├── vessel_graph_aligned_003.vtp
+│   │   ├── vessel_graph_aligned_004.vtp
 ```
 
 ---
