@@ -36,6 +36,8 @@ This is the primary pipeline for converting NIfTI segmentations into brain graph
 
 ## 📊 Data Structure Requirements
 
+All the data used and the extracted centerlines (on which the metrics are computed) are available at: https://drive.google.com/drive/folders/1TV5TTIBLfFnyWa7O4DGwa1tl7SR28O7E?usp=sharing
+
 The batch extractor expects a specific directory structure. Place your NIfTI segmentations in a source folder; the script will generate a corresponding output folder for the graphs.
 
 **ATTENTION!!** The only mandatory folder to run `vedo_extractor_batch` is the *input* one, named ITKTubeTK_ManualSegmentationNii in our example. All the others are needed for processing/evaluation metrics.
